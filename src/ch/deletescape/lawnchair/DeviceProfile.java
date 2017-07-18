@@ -32,6 +32,7 @@ import android.widget.FrameLayout;
 import java.util.ArrayList;
 
 import ch.deletescape.lawnchair.badge.BadgeRenderer;
+import ch.deletescape.lawnchair.config.FeatureFlags;
 
 public class DeviceProfile {
 
@@ -122,9 +123,12 @@ public class DeviceProfile {
     // Listeners
     private ArrayList<LauncherLayoutChangeListener> mListeners = new ArrayList<>();
 
+    private Context mContext;
+
     public DeviceProfile(Context context, InvariantDeviceProfile inv,
                          Point minSize, Point maxSize,
                          int width, int height) {
+        mContext = context;
 
         this.inv = inv;
 
@@ -177,7 +181,7 @@ public class DeviceProfile {
         availableHeightPx = maxSize.y;
 
         // Calculate the remaining vars
-        updateAvailableDimensions(dm, res);
+        updateAvailableDimensions(dm, res, context);
         computeAllAppsButtonSize(context);
         mBadgeRenderer = new BadgeRenderer(context, iconSizePx);
     }
@@ -205,7 +209,7 @@ public class DeviceProfile {
                 .getDimensionPixelSize(R.dimen.all_apps_button_scale_down);
     }
 
-    private void updateAvailableDimensions(DisplayMetrics dm, Resources res) {
+    private void updateAvailableDimensions(DisplayMetrics dm, Resources res, Context context) {
         // Check to see if the icons fit in the new available height.  If not, then we need to
         // shrink the icon size.
         float scale = 1f;
@@ -320,7 +324,9 @@ public class DeviceProfile {
     public Rect getWorkspacePadding(Rect recycle) {
         Rect padding = recycle == null ? new Rect() : recycle;
         int paddingBottom = hotseatBarHeightPx + pageIndicatorHeightPx;
-        if (isTablet) {
+        if (FeatureFlags.allowFullWidthWidgets(mContext)) {
+            padding.set(0, 0, 0, paddingBottom);
+        } else if (isTablet) {
             // Pad the left and right of the workspace to ensure consistent spacing
             // between all icons
             float gapScale = 1f + (dragViewScale - 1f) / 2f;
@@ -432,23 +438,30 @@ public class DeviceProfile {
         float workspaceCellWidth = (float) getCurrentWidth() / inv.numColumns;
         float hotseatCellWidth = (float) getCurrentWidth() / inv.numHotseatIcons;
         int hotseatAdjustment = Math.round((workspaceCellWidth - hotseatCellWidth) / 2);
+        boolean transparentHotseat = FeatureFlags.isTransparentHotseat(mContext);
         if (isTablet) {
             // Pad the hotseat with the workspace padding calculated above
             lp.gravity = Gravity.BOTTOM;
             lp.width = LayoutParams.MATCH_PARENT;
-            lp.height = hotseatBarHeightPx + mInsets.bottom;
+            lp.height = hotseatBarHeightPx + (transparentHotseat ? 0 : mInsets.bottom);
+            if (transparentHotseat) {
+                lp.bottomMargin = pageIndicatorHeightPx + mInsets.bottom;
+            }
             hotseat.getLayout().setPadding(hotseatAdjustment + workspacePadding.left,
                     hotseatBarTopPaddingPx, hotseatAdjustment + workspacePadding.right,
-                    mInsets.bottom);
+                    transparentHotseat ? 0 : mInsets.bottom);
         } else {
             // For phones, layout the hotseat without any bottom margin
             // to ensure that we have space for the folders
             lp.gravity = Gravity.BOTTOM;
             lp.width = LayoutParams.MATCH_PARENT;
-            lp.height = hotseatBarHeightPx + mInsets.bottom;
+            lp.height = hotseatBarHeightPx + (transparentHotseat ? 0 : mInsets.bottom);
+            if (transparentHotseat) {
+                lp.bottomMargin = pageIndicatorHeightPx + mInsets.bottom;
+            }
             hotseat.getLayout().setPadding(hotseatAdjustment + workspacePadding.left,
                     hotseatBarTopPaddingPx, hotseatAdjustment + workspacePadding.right,
-                    mInsets.bottom);
+                    transparentHotseat ? 0 : mInsets.bottom);
         }
         hotseat.setLayoutParams(lp);
 
@@ -459,7 +472,7 @@ public class DeviceProfile {
             // Put the page indicators above the hotseat
             lp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM;
             lp.height = pageIndicatorHeightPx;
-            lp.bottomMargin = hotseatBarHeightPx + mInsets.bottom;
+            lp.bottomMargin = mInsets.bottom + (transparentHotseat ? 0 : hotseatBarHeightPx);
             pageIndicator.setLayoutParams(lp);
         }
 

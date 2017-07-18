@@ -16,6 +16,8 @@ import ch.deletescape.lawnchair.InvariantDeviceProfile;
 import ch.deletescape.lawnchair.LauncherAppState;
 import ch.deletescape.lawnchair.LauncherAppWidgetProviderInfo;
 import ch.deletescape.lawnchair.compat.AppWidgetManagerCompat;
+import ch.deletescape.lawnchair.compat.LauncherAppsCompat;
+import ch.deletescape.lawnchair.compat.ShortcutConfigActivityInfo;
 import ch.deletescape.lawnchair.util.MultiHashMap;
 import ch.deletescape.lawnchair.util.PackageUserKey;
 
@@ -45,11 +47,11 @@ public class WidgetsModel {
             for (AppWidgetProviderInfo fromProviderInfo : AppWidgetManagerCompat.getInstance(context).getAllProviders(/*packageUserKey*/)) {
                 arrayList.add(new WidgetItem(LauncherAppWidgetProviderInfo.fromProviderInfo(fromProviderInfo), packageManager, idp));
 
-            /*for (ShortcutConfigActivityInfo widgetItem : LauncherAppsCompat.getInstance(context).getCustomShortcutActivityList(packageUserKey)) {
-                arrayList.add(new WidgetItem(widgetItem));
-            }*/
-                setWidgetsAndShortcuts(arrayList, context, packageUserKey);
             }
+            for (ShortcutConfigActivityInfo widgetItem : LauncherAppsCompat.getInstance(context).getCustomShortcutActivityList(packageUserKey)) {
+                arrayList.add(new WidgetItem(widgetItem));
+            }
+            setWidgetsAndShortcuts(arrayList, context, packageUserKey);
         } catch (Exception e) {
             /*if (!Utilities.isBinderSizeError(e)) {
                 throw e;
@@ -94,18 +96,18 @@ public class WidgetsModel {
                     }
                 }
             }
-            //if (this.mAppFilter.shouldShowApp(widgetItem2.componentName)) {
-            String packageName = widgetItem2.componentName.getPackageName();
-            PackageItemInfo obj = hashMap.get(packageName);
-            if (obj == null) {
-                obj = new PackageItemInfo(packageName);
-                obj.user = widgetItem2.user;
-                hashMap.put(packageName, obj);
-            } else if (!myUserHandle.equals(obj.user)) {
-                obj.user = widgetItem2.user;
+            if (this.mAppFilter.shouldShowApp(widgetItem2.componentName, context)) {
+                String packageName = widgetItem2.componentName.getPackageName();
+                PackageItemInfo obj = hashMap.get(packageName);
+                if (obj == null) {
+                    obj = new PackageItemInfo(packageName);
+                    obj.user = widgetItem2.user;
+                    hashMap.put(packageName, obj);
+                } else if (!myUserHandle.equals(obj.user)) {
+                    obj.user = widgetItem2.user;
+                }
+                this.mWidgetsList.addToList(obj, widgetItem2);
             }
-            this.mWidgetsList.addToList(obj, widgetItem2);
-            //}
         }
         for (PackageItemInfo packageItemInfo22 : hashMap.values()) {
             this.mIconCache.getTitleAndIconForApp(packageItemInfo22, true);

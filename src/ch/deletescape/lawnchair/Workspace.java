@@ -54,7 +54,6 @@ import android.view.accessibility.AccessibilityManager;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,6 +78,7 @@ import ch.deletescape.lawnchair.dynamicui.ExtractedColors;
 import ch.deletescape.lawnchair.folder.Folder;
 import ch.deletescape.lawnchair.folder.FolderIcon;
 import ch.deletescape.lawnchair.graphics.DragPreviewProvider;
+import ch.deletescape.lawnchair.pixelify.ExperimentalQsbWidget;
 import ch.deletescape.lawnchair.popup.PopupContainerWithArrow;
 import ch.deletescape.lawnchair.shortcuts.ShortcutDragPreviewProvider;
 import ch.deletescape.lawnchair.util.ItemInfoMatcher;
@@ -118,6 +118,7 @@ public class Workspace extends PagedView
     public static final long FIRST_SCREEN_ID = 0;
 
     private static final int DEFAULT_PAGE = 0;
+    private final boolean mBlurQsb;
 
     private LayoutTransition mLayoutTransition;
     @Thunk
@@ -182,6 +183,9 @@ public class Workspace extends PagedView
 
     private SpringLoadedDragController mSpringLoadedDragController;
     private float mOverviewModeShrinkFactor;
+    private View mQsbView;
+    private ExperimentalQsbWidget mSearchBar;
+    private int mLastScrollX;
 
     // State variable that indicates whether the pages are small (ie when you're
     // in all apps or customize mode)
@@ -359,6 +363,8 @@ public class Workspace extends PagedView
         mWallpaperOffset = new WallpaperOffsetInterpolator(this);
         mOverviewModeShrinkFactor =
                 res.getInteger(R.integer.config_workspaceOverviewShrinkPercentage) / 100f;
+
+        mBlurQsb = FeatureFlags.isBlurEnabled(context) && FeatureFlags.useFullWidthSearchbar(context);
 
         setOnHierarchyChangeListener(this);
         setHapticFeedbackEnabled(false);
@@ -576,7 +582,6 @@ public class Workspace extends PagedView
 
         // Add the first page
         CellLayout firstPage = insertNewWorkspaceScreen(Workspace.FIRST_SCREEN_ID, 0);
-        initPullDownToSearch();
         // Always add a QSB on the first screen.
         if (qsb == null) {
             // In transposed layout, we add the QSB in the Grid. As workspace does not touch the
@@ -584,6 +589,7 @@ public class Workspace extends PagedView
             qsb = mLauncher.getLayoutInflater().inflate(R.layout.qsb_blocker_view,
                     firstPage, false);
         }
+        mQsbView = qsb;
 
         CellLayout.LayoutParams lp = new CellLayout.LayoutParams(0, 0, firstPage.getCountX(), 1);
         lp.canReorder = false;
@@ -592,10 +598,15 @@ public class Workspace extends PagedView
         }
     }
 
-    public void initPullDownToSearch() {
-        CellLayout firstPage = mWorkspaceScreens.get(FIRST_SCREEN_ID);
+    public void initPullDown() {
+        for (CellLayout layout : mWorkspaceScreens) {
+            initPullDown(layout);
+        }
+    }
+
+    public void initPullDown(CellLayout layout) {
         if (FeatureFlags.pulldownOpensNotifications(getContext())) {
-            firstPage.setOnTouchListener(new VerticalFlingDetector(mLauncher) {
+            layout.setOnTouchListener(new VerticalFlingDetector(mLauncher) {
                 // detect fling when touch started from empty space
                 @Override
                 public boolean onTouch(View v, MotionEvent ev) {
@@ -608,7 +619,7 @@ public class Workspace extends PagedView
                     return false;
                 }
             });
-            firstPage.setOnInterceptTouchListener(new VerticalFlingDetector(mLauncher) {
+            layout.setOnInterceptTouchListener(new VerticalFlingDetector(mLauncher) {
                 // detect fling when touch started from on top of the icons
                 @Override
                 public boolean onTouch(View v, MotionEvent ev) {
@@ -621,8 +632,8 @@ public class Workspace extends PagedView
                 }
             });
         } else {
-            firstPage.setOnTouchListener(null);
-            firstPage.setOnInterceptTouchListener(null);
+            layout.setOnTouchListener(null);
+            layout.setOnInterceptTouchListener(null);
         }
     }
 
@@ -630,10 +641,9 @@ public class Workspace extends PagedView
         try {
             Class StatusBarManager = Class.forName("android.app.StatusBarManager");
             Object o = StatusBarManager.cast(getContext().getSystemService("statusbar"));
-            StatusBarManager.getDeclaredMethod("expandNotificationsPanel", null).invoke(o, null);
+            StatusBarManager.getDeclaredMethod("expandNotificationsPanel").invoke(o);
         } catch (Exception ignored) {
             Log.e("expandStatusbar", "", ignored);
-            Toast.makeText(getContext(), ignored.toString(), Toast.LENGTH_LONG);
         }
     }
 
@@ -714,6 +724,8 @@ public class Workspace extends PagedView
         if (mLauncher.getAccessibilityDelegate().isInAccessibleDrag()) {
             newScreen.enableAccessibleDrag(true, CellLayout.WORKSPACE_ACCESSIBILITY_DRAG);
         }
+
+        initPullDown(newScreen);
 
         return newScreen;
     }
@@ -1311,6 +1323,8 @@ public class Workspace extends PagedView
     protected void onScrollChanged(int l, int t, int oldl, int oldt) {
         super.onScrollChanged(l, t, oldl, oldt);
         onWorkspaceOverallScrollChanged();
+        mLastScrollX = l;
+        translateBlurX((int) (l - mOverlayTranslation));
 
         // Update the page indicator progress.
         boolean isTransitioning = mIsSwitchingState
@@ -1318,6 +1332,30 @@ public class Workspace extends PagedView
         if (!isTransitioning) {
             showPageIndicatorAtCurrentScroll();
         }
+    }
+
+    private void translateBlurX(int translationX) {
+        if (!mBlurQsb) return;
+
+        ExperimentalQsbWidget searchBar = getSearchBar();
+        if (searchBar != null)
+            searchBar.translateBlurX(translationX);
+    }
+
+    private void translateBlurY(int translationY) {
+        if (!mBlurQsb) return;
+
+        ExperimentalQsbWidget searchBar = getSearchBar();
+        if (searchBar != null)
+            searchBar.translateBlurY(translationY);
+    }
+
+    private ExperimentalQsbWidget getSearchBar() {
+        if (mSearchBar == null) {
+            if (mQsbView == null) return null;
+            mSearchBar = (ExperimentalQsbWidget) ((ViewGroup) mQsbView).getChildAt(0);
+        }
+        return mSearchBar;
     }
 
     private void showPageIndicatorAtCurrentScroll() {
@@ -1376,6 +1414,7 @@ public class Workspace extends PagedView
         // TODO(adamcohen): figure out a final effect here. We may need to recommend
         // different effects based on device performance. On at least one relatively high-end
         // device I've tried, translating the launcher causes things to get quite laggy.
+        translateBlurX((int) -transX + mLastScrollX);
         setWorkspaceTranslationAndAlpha(Direction.X, transX, alpha);
         setHotseatTranslationAndAlpha(Direction.X, transX, alpha);
         onWorkspaceOverallScrollChanged();
@@ -1390,6 +1429,7 @@ public class Workspace extends PagedView
      * @param alpha       the alpha for the workspace page
      */
     public void setWorkspaceYTranslationAndAlpha(float translation, float alpha) {
+        translateBlurY((int) -translation);
         setWorkspaceTranslationAndAlpha(Direction.Y, translation, alpha);
 
         mLauncher.getQsbContainer().setTranslationY(translation);
@@ -1908,6 +1948,7 @@ public class Workspace extends PagedView
                 && toState.shouldUpdateWidget;
         // Update the current state
         mState = toState;
+        updateBlurMode();
         updateAccessibilityFlags();
 
         if (shouldNotifyWidgetChange) {
@@ -1919,6 +1960,10 @@ public class Workspace extends PagedView
         }
 
         return workspaceAnim;
+    }
+
+    private void updateBlurMode() {
+        mLauncher.getBlurWallpaperProvider().setUseTransparency(isInOverviewMode());
     }
 
     public State getState() {
@@ -2082,7 +2127,7 @@ public class Workspace extends PagedView
         if ((child instanceof BubbleTextView) && (!dragOptions.isAccessibleDrag)) {
             PopupContainerWithArrow showForIcon = PopupContainerWithArrow.showForIcon((BubbleTextView) child);
             if (showForIcon != null) {
-                dragOptions.deferDragCondition2 = showForIcon.createDeferDragCondition();
+                dragOptions.preDragCondition = showForIcon.createPreDragCondition(mLauncher.isAllAppsVisible());
             }
         }
         DragView startDrag = this.mDragController.startDrag(createDragBitmap, i2, i3, source, dragObject, point, rect, scaleAndPosition, dragOptions);
@@ -2434,8 +2479,7 @@ public class Workspace extends PagedView
 
                         final LauncherAppWidgetHostView hostView = (LauncherAppWidgetHostView) cell;
                         AppWidgetProviderInfo pInfo = hostView.getAppWidgetInfo();
-                        if (pInfo != null && pInfo.resizeMode != AppWidgetProviderInfo.RESIZE_NONE
-                                && !d.accessibleDrag) {
+                        if (pInfo != null && !d.accessibleDrag) {
                             mDelayedResizeRunnable = new Runnable() {
                                 @Override
                                 public void run() {
@@ -2963,7 +3007,7 @@ public class Workspace extends PagedView
             DeviceProfile grid = mLauncher.getDeviceProfile();
             BubbleTextView cell = (BubbleTextView) layout.getChildAt(cellX, cellY);
 
-            bg.setup(getResources().getDisplayMetrics(), grid, null,
+            bg.setup(getContext(), getResources().getDisplayMetrics(), grid, null,
                     cell.getMeasuredWidth(), cell.getPaddingTop());
 
             // The full preview background should appear behind the icon
@@ -3862,7 +3906,7 @@ public class Workspace extends PagedView
             public boolean evaluate(ItemInfo itemInfo, View view) {
                 if ((itemInfo instanceof ShortcutInfo) && (view instanceof BubbleTextView) && packageUserKey.updateFromItemInfo(itemInfo) && set.contains(packageUserKey)) {
                     ((BubbleTextView) view).applyBadgeState(itemInfo, true);
-                    hashSet.add(Long.valueOf(itemInfo.container));
+                    hashSet.add(itemInfo.container);
                 }
                 return false;
             }
@@ -3870,7 +3914,7 @@ public class Workspace extends PagedView
         mapOverItems(false, new ItemOperator() {
             @Override
             public boolean evaluate(ItemInfo itemInfo, View view) {
-                if ((itemInfo instanceof FolderInfo) && hashSet.contains(Long.valueOf(itemInfo.id)) && (view instanceof FolderIcon)) {
+                if ((itemInfo instanceof FolderInfo) && hashSet.contains(itemInfo.id) && (view instanceof FolderIcon)) {
                     FolderBadgeInfo folderBadgeInfo = new FolderBadgeInfo();
                     for (ShortcutInfo badgeInfoForItem : ((FolderInfo) itemInfo).contents) {
                         folderBadgeInfo.addBadgeInfo(Workspace.this.mLauncher.getPopupDataProvider().getBadgeInfoForItem(badgeInfoForItem));

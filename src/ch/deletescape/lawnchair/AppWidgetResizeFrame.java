@@ -6,7 +6,6 @@ import android.animation.PropertyValuesHolder;
 import android.animation.ValueAnimator;
 import android.animation.ValueAnimator.AnimatorUpdateListener;
 import android.appwidget.AppWidgetHostView;
-import android.appwidget.AppWidgetProviderInfo;
 import android.content.Context;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -60,7 +59,6 @@ public class AppWidgetResizeFrame extends FrameLayout implements View.OnKeyListe
     private int mBaselineHeight;
     private int mBaselineX;
     private int mBaselineY;
-    private int mResizeMode;
 
     private int mRunningHInc;
     private int mRunningVInc;
@@ -83,7 +81,6 @@ public class AppWidgetResizeFrame extends FrameLayout implements View.OnKeyListe
         mWidgetView = widgetView;
         LauncherAppWidgetProviderInfo info = (LauncherAppWidgetProviderInfo)
                 widgetView.getAppWidgetInfo();
-        mResizeMode = info.resizeMode;
         mDragLayer = dragLayer;
 
         mMinHSpan = info.minSpanX;
@@ -128,17 +125,12 @@ public class AppWidgetResizeFrame extends FrameLayout implements View.OnKeyListe
         mWidgetPadding = AppWidgetHostView.getDefaultPaddingForWidget(context,
                 widgetView.getAppWidgetInfo().provider, null);
 
-        if (mResizeMode == AppWidgetProviderInfo.RESIZE_HORIZONTAL) {
-            mTopHandle.setVisibility(GONE);
-            mBottomHandle.setVisibility(GONE);
-        } else if (mResizeMode == AppWidgetProviderInfo.RESIZE_VERTICAL) {
-            mLeftHandle.setVisibility(GONE);
-            mRightHandle.setVisibility(GONE);
-        }
-
         mBackgroundPadding = getResources()
                 .getDimensionPixelSize(R.dimen.resize_frame_background_padding);
         mTouchTargetWidth = 2 * mBackgroundPadding;
+
+mMinHSpan=1;  
+mMinVSpan=1;   
 
         // When we create the resize frame, we first mark all cells as unoccupied. The appropriate
         // cells (same if not resized, or different) will be marked as occupied when the resize
@@ -149,14 +141,10 @@ public class AppWidgetResizeFrame extends FrameLayout implements View.OnKeyListe
     }
 
     public boolean beginResizeIfPointInRegion(int x, int y) {
-        boolean horizontalActive = (mResizeMode & AppWidgetProviderInfo.RESIZE_HORIZONTAL) != 0;
-        boolean verticalActive = (mResizeMode & AppWidgetProviderInfo.RESIZE_VERTICAL) != 0;
-
-        mLeftBorderActive = (x < mTouchTargetWidth) && horizontalActive;
-        mRightBorderActive = (x > getWidth() - mTouchTargetWidth) && horizontalActive;
-        mTopBorderActive = (y < mTouchTargetWidth + mTopTouchRegionAdjustment) && verticalActive;
-        mBottomBorderActive = (y > getHeight() - mTouchTargetWidth + mBottomTouchRegionAdjustment)
-                && verticalActive;
+        mLeftBorderActive = (x < mTouchTargetWidth);
+        mRightBorderActive = (x > getWidth() - mTouchTargetWidth);
+        mTopBorderActive = (y < mTouchTargetWidth + mTopTouchRegionAdjustment);
+        mBottomBorderActive = (y > getHeight() - mTouchTargetWidth + mBottomTouchRegionAdjustment);
 
         boolean anyBordersActive = mLeftBorderActive || mRightBorderActive
                 || mTopBorderActive || mBottomBorderActive;
@@ -454,18 +442,13 @@ public class AppWidgetResizeFrame extends FrameLayout implements View.OnKeyListe
             ObjectAnimator topOa = LauncherAnimUtils.ofFloat(mTopHandle, ALPHA, 1.0f);
             ObjectAnimator bottomOa = LauncherAnimUtils.ofFloat(mBottomHandle, ALPHA, 1.0f);
             oa.addUpdateListener(new AnimatorUpdateListener() {
+                @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
                     requestLayout();
                 }
             });
             AnimatorSet set = LauncherAnimUtils.createAnimatorSet();
-            if (mResizeMode == AppWidgetProviderInfo.RESIZE_VERTICAL) {
-                set.playTogether(oa, topOa, bottomOa);
-            } else if (mResizeMode == AppWidgetProviderInfo.RESIZE_HORIZONTAL) {
-                set.playTogether(oa, leftOa, rightOa);
-            } else {
-                set.playTogether(oa, leftOa, rightOa, topOa, bottomOa);
-            }
+          set.playTogether(oa, leftOa, rightOa, topOa, bottomOa);
 
             set.setDuration(SNAP_DURATION);
             set.start();

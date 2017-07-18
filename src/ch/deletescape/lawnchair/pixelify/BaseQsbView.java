@@ -26,7 +26,7 @@ import ch.deletescape.lawnchair.util.PackageManagerHelper;
 
 public abstract class BaseQsbView extends FrameLayout implements OnClickListener, OnSharedPreferenceChangeListener {
     private static final String TEXT_ASSIST = "com.google.android.googlequicksearchbox.TEXT_ASSIST";
-    private static final String VOICE_ASSIST = "android.intent.action.VOICE_ASSIST";
+    private static final String VOICE_ASSIST = Intent.ACTION_VOICE_COMMAND;
     protected View mQsbView;
     protected final Launcher mLauncher;
     protected boolean showMic;
@@ -36,6 +36,7 @@ public abstract class BaseQsbView extends FrameLayout implements OnClickListener
     private boolean qsbHidden;
     private int mQsbViewId = 0;
     private boolean bM;
+    private boolean mUseWhiteLogo;
 
     protected abstract int getQsbView(boolean withMic);
 
@@ -46,9 +47,11 @@ public abstract class BaseQsbView extends FrameLayout implements OnClickListener
 
     public void applyVoiceSearchPreference(SharedPreferences prefs) {
         showMic = FeatureFlags.showVoiceSearchButton(getContext());
+        boolean useWhiteLogo = FeatureFlags.useWhiteGoogleIcon(getContext());
         int qsbView = getQsbView(showMic);
-        if (qsbView != mQsbViewId) {
+        if (qsbView != mQsbViewId || mUseWhiteLogo != useWhiteLogo) {
             mQsbViewId = qsbView;
+            mUseWhiteLogo = useWhiteLogo;
             if (mQsbView != null) {
                 removeView(mQsbView);
             }
@@ -65,7 +68,12 @@ public abstract class BaseQsbView extends FrameLayout implements OnClickListener
             if (showMic) {
                 mQsbView.findViewById(R.id.mic_icon).setOnClickListener(this);
             }
+            setupViews();
         }
+    }
+
+    protected void setupViews() {
+
     }
 
     @Override
@@ -95,17 +103,18 @@ public abstract class BaseQsbView extends FrameLayout implements OnClickListener
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String str) {
-        if (FeatureFlags.KEY_SHOW_VOICE_SEARCH_BUTTON.equals(str)) {
+        if (FeatureFlags.KEY_SHOW_VOICE_SEARCH_BUTTON.equals(str) ||
+                FeatureFlags.KEY_PREF_WHITE_GOOGLE_ICON.equals(str)) {
             applyVoiceSearchPreference(sharedPreferences);
             applyVisibility();
         }
     }
 
     private void initializeQsbConnector() {
-        if (qsbConnector == null && !FeatureFlags.useFullWidthSearchbar(getContext())) {
+        if (qsbConnector == null && !FeatureFlags.useFullWidthSearchbar(getContext()) && FeatureFlags.showGoogleNowTab(mLauncher)) {
             qsbConnector = (QsbConnector) mLauncher.getLayoutInflater().inflate(R.layout.qsb_connector, this, false);
             addView(qsbConnector, 0);
-        } else if (FeatureFlags.useFullWidthSearchbar(getContext())) {
+        } else if (FeatureFlags.useFullWidthSearchbar(getContext()) || !FeatureFlags.showGoogleNowTab(mLauncher)) {
             removeView(qsbConnector);
         }
     }

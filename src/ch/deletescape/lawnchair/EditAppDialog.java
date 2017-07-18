@@ -16,18 +16,11 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.firebase.crash.FirebaseCrash;
-
-import java.util.HashSet;
-import java.util.Set;
-
 import ch.deletescape.lawnchair.compat.LauncherAppsCompat;
 
 
 public class EditAppDialog extends Dialog {
-    private static final String KEY_PREF_HIDDEN_APPS = "pref_hiddenApps";
     private static SharedPreferences sharedPrefs;
-    private static Set<String> hiddenApps;
     private AppInfo info;
     private EditText title;
     private Switch visibility;
@@ -39,10 +32,6 @@ public class EditAppDialog extends Dialog {
         this.info = info;
         this.launcher = launcher;
         sharedPrefs = Utilities.getPrefs(context.getApplicationContext());
-        hiddenApps = sharedPrefs.getStringSet(KEY_PREF_HIDDEN_APPS, null);
-        if (hiddenApps == null) {
-            hiddenApps = new HashSet<>();
-        }
         setCanceledOnTouchOutside(true);
     }
 
@@ -62,7 +51,7 @@ public class EditAppDialog extends Dialog {
         icon.setImageBitmap(info.iconBitmap);
         title.setText(info.title);
         packageName.setText(component.getPackageName());
-        visibleState = !hiddenApps.contains(component.flattenToString());
+        visibleState = !Utilities.isAppHidden(getContext(), component.flattenToString());
         visibility.setChecked(visibleState);
 
         View.OnLongClickListener olcl = new View.OnLongClickListener() {
@@ -72,7 +61,6 @@ public class EditAppDialog extends Dialog {
                     LauncherAppsCompat.getInstance(launcher).showAppDetailsForProfile(component, info.user);
                     return true;
                 } catch (SecurityException | ActivityNotFoundException e) {
-                    FirebaseCrash.report(e);
                     Toast.makeText(launcher, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
                     Log.e("EditAppDialog", "Unable to launch settings", e);
                 }
@@ -94,12 +82,7 @@ public class EditAppDialog extends Dialog {
     public void dismiss() {
         String key = info.componentName.flattenToString();
         if (visibility.isChecked() != visibleState) {
-            if (visibility.isChecked()) {
-                hiddenApps.remove(key);
-            } else {
-                hiddenApps.add(key);
-            }
-            sharedPrefs.edit().putStringSet(KEY_PREF_HIDDEN_APPS, hiddenApps).apply();
+            Utilities.setAppVisibility(getContext(), key, visibility.isChecked());
         }
         String titleS = title.getText().toString();
         if (!titleS.trim().equals(info.title.toString().trim())) {

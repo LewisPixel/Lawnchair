@@ -179,6 +179,9 @@ public class ExtractedColors {
      * - 40% lightVibrant or 25% white otherwise
      */
     public int getHotseatColor(Context context) {
+        if (FeatureFlags.isTransparentHotseat(context)) {
+            return Color.TRANSPARENT;
+        }
         int hotseatColor;
         boolean shouldUseExtractedColors = FeatureFlags.hotseatShouldUseExtractedColors(context);
         if (getColor(IS_SUPER_LIGHT, 0) == 1) {
@@ -193,14 +196,14 @@ public class ExtractedColors {
                 int baseColor = getColor(HOTSEAT_LIGHT_MUTED_INDEX, getColor(HOTSEAT_LIGHT_VIBRANT_INDEX, Color.WHITE));
                 hotseatColor = ColorUtils.setAlphaComponent(baseColor, (int) (0.25f * 255));
             } else {
-                hotseatColor = ColorUtils.setAlphaComponent(Color.WHITE, (int) (0.18f * 255));
+                hotseatColor = ColorUtils.setAlphaComponent(FeatureFlags.useDarkTheme ? Color.BLACK : Color.WHITE, (int) (0.18f * 255));
             }
         } else {
             if (shouldUseExtractedColors) {
                 int baseColor = getColor(HOTSEAT_LIGHT_VIBRANT_INDEX, getColor(HOTSEAT_LIGHT_MUTED_INDEX, Color.WHITE));
                 hotseatColor = ColorUtils.setAlphaComponent(baseColor, (int) (0.40f * 255));
             } else {
-                hotseatColor = ColorUtils.setAlphaComponent(Color.WHITE, (int) (0.25f * 255));
+                hotseatColor = ColorUtils.setAlphaComponent(FeatureFlags.useDarkTheme ? Color.BLACK : Color.WHITE, (int) (0.25f * 255));
             }
         }
         return hotseatColor;
@@ -209,5 +212,9 @@ public class ExtractedColors {
     public void updateStatusBarPalette(Palette statusBarPalette) {
         setColorAtIndex(STATUS_BAR_INDEX, ExtractionUtils.isSuperLight(statusBarPalette) ?
                 DEFAULT_LIGHT : DEFAULT_DARK);
+    }
+
+    public boolean isLightStatusBar() {
+        return getColor(STATUS_BAR_INDEX, DEFAULT_LIGHT) == DEFAULT_LIGHT;
     }
 }

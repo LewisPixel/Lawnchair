@@ -77,7 +77,7 @@ public class NotificationFooterLayout extends FrameLayout {
         super.onFinishInflate();
         mOverflowEllipsis = findViewById(R.id.overflow);
         mIconRow = (LinearLayout) findViewById(R.id.icon_row);
-        mBackgroundColor = ((ColorDrawable) getBackground()).getColor();
+        mBackgroundColor = getResources().getColor(R.color.popup_background_color);
     }
 
     public void addNotificationInfo(NotificationInfo notificationInfo) {
@@ -105,7 +105,7 @@ public class NotificationFooterLayout extends FrameLayout {
         view.setBackground(notificationInfo.getIconForBackground(getContext(), mBackgroundColor));
         view.setOnClickListener(notificationInfo);
         view.setTag(notificationInfo);
-        view.setImportantForAccessibility(2);
+        view.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         mIconRow.addView(view, 0, mIconLayoutParams);
         return view;
     }

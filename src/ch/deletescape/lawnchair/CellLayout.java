@@ -43,8 +43,6 @@ import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.animation.DecelerateInterpolator;
 
-import com.google.firebase.crash.FirebaseCrash;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -348,7 +346,9 @@ public class CellLayout extends ViewGroup implements BubbleTextShadowHandler {
     }
 
     public void buildHardwareLayer() {
-        mShortcutsAndWidgets.buildLayer();
+        if (mShortcutsAndWidgets.getVisibility() == VISIBLE) {
+            mShortcutsAndWidgets.buildLayer();
+        }
     }
 
     public float getChildrenScale() {
@@ -510,7 +510,7 @@ public class CellLayout extends ViewGroup implements BubbleTextShadowHandler {
         DeviceProfile grid = mLauncher.getDeviceProfile();
         View child = getChildAt(x, y);
 
-        mFolderLeaveBehind.setup(getResources().getDisplayMetrics(), grid, null,
+        mFolderLeaveBehind.setup(getContext(), getResources().getDisplayMetrics(), grid, null,
                 child.getMeasuredWidth(), child.getPaddingTop());
 
         mFolderLeaveBehind.delegateCellX = x;
@@ -533,7 +533,6 @@ public class CellLayout extends ViewGroup implements BubbleTextShadowHandler {
         try {
             dispatchRestoreInstanceState(states);
         } catch (IllegalArgumentException ex) {
-            FirebaseCrash.report(ex);
             // Mismatched viewId / viewType preventing restore. Skip restore on production builds.
             Log.e(TAG, "Ignoring an error while restoring a view instance state", ex);
         }
@@ -575,10 +574,9 @@ public class CellLayout extends ViewGroup implements BubbleTextShadowHandler {
     public boolean addViewToCellLayout(View child, int index, int childId, LayoutParams params, boolean markCells) {
         final LayoutParams lp = params;
 
-        // Hotseat icons - remove text
         if (child instanceof BubbleTextView) {
-            BubbleTextView bubbleChild = (BubbleTextView) child;
-            bubbleChild.setTextVisibility(!mIsHotseat);
+            BubbleTextView view = (BubbleTextView) child;
+            view.setTextVisibility(!mIsHotseat);
         }
 
         child.setScaleX(getChildrenScale());

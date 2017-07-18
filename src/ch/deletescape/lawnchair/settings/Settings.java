@@ -27,6 +27,15 @@ public class Settings implements SharedPreferences.OnSharedPreferenceChangeListe
     private static final String KEY_PREF_ICON_TEXT_SCALE = "pref_iconTextScaleSB";
     private static final String KEY_PREF_ICON_PACK_PACKAGE = "pref_iconPackPackage";
     private static final String KEY_PREF_PIXEL_STYLE_ICONS = "pref_pixelStyleIcons";
+    private static final String KEY_PREF_HIDE_APP_LABELS = "pref_hideAppLabels";
+    private static final String KEY_PREF_FULL_WIDTH_WIDGETS = "pref_fullWidthWidgets";
+    private static final String KEY_PREF_SHOW_NOW_TAB = "pref_showGoogleNowTab";
+    private static final String KEY_PREF_TRANSPARENT_HOTSEAT = "pref_isHotseatTransparent";
+    private static final String KEY_PREF_ENABLE_DYNAMIC_UI = "pref_enableDynamicUi";
+    private static final String KEY_PREF_ENABLE_BLUR = "pref_enableBlur";
+    private static final String KEY_PREF_BLUR_RADIUS = "pref_blurRadius";
+    private static final String KEY_PREF_WHITE_GOOGLE_ICON = "pref_enableWhiteGoogleIcon";
+    private static final String KEY_PREF_DARK_THEME = "pref_enableDarkTheme";
     private static Settings instance;
     private Launcher mLauncher;
 
@@ -62,7 +71,7 @@ public class Settings implements SharedPreferences.OnSharedPreferenceChangeListe
                     dragLayer.onAccessibilityStateChanged(dragLayer.mIsAccesibilityEnabled);
                     break;
                 case KEY_PREF_PULLDOWN_SEARCH:
-                    mLauncher.getWorkspace().initPullDownToSearch();
+                    mLauncher.getWorkspace().initPullDown();
                     break;
                 case KEY_PREF_HOTSEAT_EXTRACTED_COLORS:
                     ExtractedColors ec = mLauncher.getExtractedColors();
@@ -99,16 +108,34 @@ public class Settings implements SharedPreferences.OnSharedPreferenceChangeListe
                     break;
                 case KEY_PREF_KEEP_SCROLL_STATE:
                 case KEY_SHOW_VOICE_SEARCH_BUTTON:
+                case KEY_PREF_WHITE_GOOGLE_ICON:
                     // Ignoring those as we do not need to apply anything special
+                    break;
+                case KEY_PREF_ENABLE_BLUR:
+                case KEY_PREF_BLUR_RADIUS:
+                    mLauncher.scheduleUpdateWallpaper();
                     break;
                 case KEY_PREF_ICON_SCALE:
                 case KEY_PREF_ICON_TEXT_SCALE:
+                case KEY_FULL_WIDTH_SEARCHBAR:
+                case KEY_PREF_FULL_WIDTH_WIDGETS:
+                case KEY_PREF_ENABLE_DYNAMIC_UI:
+                case KEY_PREF_DARK_THEME:
                     mLauncher.scheduleKill();
                     break;
                 case KEY_PREF_ICON_PACK_PACKAGE:
                 case KEY_PREF_PIXEL_STYLE_ICONS:
                     mLauncher.scheduleReloadIcons();
                     break;
+                case KEY_PREF_HIDE_APP_LABELS:
+                    las.reloadWorkspace();
+                    break;
+                case KEY_PREF_SHOW_NOW_TAB:
+                    if (!prefs.getBoolean(key, true)) {
+                        mLauncher.getClient().remove();
+                    } else {
+                        mLauncher.scheduleKill();
+                    }
                 default:
                     las.reloadAll(false);
             }

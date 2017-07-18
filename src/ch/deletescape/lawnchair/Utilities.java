@@ -61,8 +61,6 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.Toast;
 
-import com.google.firebase.crash.FirebaseCrash;
-
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -79,6 +77,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ch.deletescape.lawnchair.config.FeatureFlags;
 import ch.deletescape.lawnchair.dynamicui.ExtractedColors;
 import ch.deletescape.lawnchair.graphics.ShadowGenerator;
 import ch.deletescape.lawnchair.util.IconNormalizer;
@@ -447,7 +446,6 @@ public final class Utilities {
             Log.e(TAG, "Launcher does not have the permission to launch " + intent +
                     ". Make sure to create a MAIN intent-filter for the corresponding activity " +
                     "or use the exported attribute for this activity.", e);
-            FirebaseCrash.report(e);
         }
     }
 
@@ -592,7 +590,6 @@ public final class Utilities {
             out.close();
             return out.toByteArray();
         } catch (IOException e) {
-            FirebaseCrash.report(e);
             Log.w(TAG, "Could not write bitmap");
             return null;
         }
@@ -890,5 +887,30 @@ public final class Utilities {
         HashSet<T> hashSet = new HashSet<>(1);
         hashSet.add(obj);
         return hashSet;
+    }
+
+    public static void setAppVisibility(Context context, String key, boolean visible) {
+        getPrefs(context).edit().putBoolean("visibility_" + key, visible).apply();
+    }
+
+    public static boolean isAppHidden(Context context, String key) {
+        return !getPrefs(context).getBoolean("visibility_" + key, true);
+    }
+
+    public static int getDynamicAccent(Context context) {
+        if (!FeatureFlags.isDynamicUiEnabled(context)) return getColorAccent(context);
+        return getColor(context, ExtractedColors.VIBRANT_INDEX, getColorAccent(context));
+    }
+
+    public static int getDynamicBadgeColor(Context context) {
+        int defaultColor = context.getResources().getColor(R.color.badge_color);
+        if (!FeatureFlags.isDynamicUiEnabled(context)) return defaultColor;
+        return getColor(context, ExtractedColors.VIBRANT_INDEX, defaultColor);
+    }
+
+    public static int resolveAttributeData(Context context, int attr) {
+        TypedValue typedValue = new TypedValue();
+        context.getTheme().resolveAttribute(attr, typedValue, true);
+        return typedValue.data;
     }
 }

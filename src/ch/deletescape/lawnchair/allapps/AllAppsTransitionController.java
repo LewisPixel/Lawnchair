@@ -23,7 +23,10 @@ import ch.deletescape.lawnchair.LauncherAnimUtils;
 import ch.deletescape.lawnchair.LauncherAppWidgetHostView;
 import ch.deletescape.lawnchair.R;
 import ch.deletescape.lawnchair.ShortcutAndWidgetContainer;
+import ch.deletescape.lawnchair.Utilities;
 import ch.deletescape.lawnchair.Workspace;
+import ch.deletescape.lawnchair.blur.BlurWallpaperProvider;
+import ch.deletescape.lawnchair.config.FeatureFlags;
 import ch.deletescape.lawnchair.util.TouchController;
 
 /**
@@ -51,6 +54,7 @@ public class AllAppsTransitionController implements TouchController, VerticalPul
 
     private AllAppsContainerView mAppsView;
     private int mAllAppsBackgroundColor;
+    private int mAllAppsBackgroundColorBlur;
     private Workspace mWorkspace;
     private Hotseat mHotseat;
     private int mHotseatBackgroundColor;
@@ -98,7 +102,8 @@ public class AllAppsTransitionController implements TouchController, VerticalPul
         mShiftRange = DEFAULT_SHIFT_RANGE;
         mProgress = 1f;
         mEvaluator = new ArgbEvaluator();
-        mAllAppsBackgroundColor = ContextCompat.getColor(l, R.color.all_apps_container_color);
+        mAllAppsBackgroundColor = Utilities.resolveAttributeData(l, R.attr.allAppsContainerColor);
+        mAllAppsBackgroundColorBlur = Utilities.resolveAttributeData(l, R.attr.allAppsContainerColorBlur);
     }
 
     public void setAllAppsAlpha(int allAppsAlpha) {
@@ -257,10 +262,19 @@ public class AllAppsTransitionController implements TouchController, VerticalPul
     }
 
     private void updateLightStatusBar(float shift) {
-        // Use a light status bar (dark icons) if all apps is behind at least half of the status
-        // bar. If the status bar is already light due to wallpaper extraction, keep it that way.
-        boolean forceLight = shift <= mStatusBarHeight / 2;
-        mLauncher.activateLightStatusBar(forceLight);
+        boolean darkStatusBar = FeatureFlags.useDarkTheme ||
+                (BlurWallpaperProvider.isEnabled() &&
+                !mLauncher.getExtractedColors().isLightStatusBar() &&
+                allAppsAlpha < 52);
+
+        if (Utilities.ATLEAST_MARSHMALLOW) {
+            // Use a light status bar (dark icons) if all apps is behind at least half of the status
+            // bar. If the status bar is already light due to wallpaper extraction, keep it that way.
+            boolean forceLight = !darkStatusBar && shift <= mStatusBarHeight / 2;
+            mLauncher.activateLightStatusBar(forceLight);
+        } else {
+            mAppsView.setStatusBarHeight(darkStatusBar ? 0 : Math.max(mStatusBarHeight - shift, 0));
+        }
     }
 
     /**
@@ -275,9 +289,15 @@ public class AllAppsTransitionController implements TouchController, VerticalPul
         float interpolation = mAccelInterpolator.getInterpolation(progress);
 
         int allAppsBg = ColorUtils.setAlphaComponent(mAllAppsBackgroundColor, allAppsAlpha);
-        int color = (int) mEvaluator.evaluate(mDecelInterpolator.getInterpolation(alpha), mHotseatBackgroundColor, allAppsBg);
-
+        int color = (int) mEvaluator.evaluate(
+                mDecelInterpolator.getInterpolation(alpha),
+                BlurWallpaperProvider.isEnabled() ? mAllAppsBackgroundColorBlur : mHotseatBackgroundColor,
+                BlurWallpaperProvider.isEnabled() ? mAllAppsBackgroundColorBlur + (allAppsAlpha << 24) : allAppsBg);
         mAppsView.setRevealDrawableColor(color);
+        if (BlurWallpaperProvider.isEnabled()) {
+            mAppsView.setWallpaperTranslation(shiftCurrent);
+            mHotseat.setWallpaperTranslation(shiftCurrent);
+        }
         mAppsView.getContentView().setAlpha(alpha);
         mAppsView.setTranslationY(shiftCurrent);
         mWorkspace.setHotseatTranslationAndAlpha(Workspace.Direction.Y, -mShiftRange + shiftCurrent,

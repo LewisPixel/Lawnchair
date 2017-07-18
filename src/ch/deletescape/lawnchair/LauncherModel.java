@@ -45,8 +45,6 @@ import android.util.LongSparseArray;
 import android.util.MutableInt;
 import android.util.Pair;
 
-import com.google.firebase.crash.FirebaseCrash;
-
 import java.lang.ref.WeakReference;
 import java.net.URISyntaxException;
 import java.security.InvalidParameterException;
@@ -63,6 +61,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+import ch.deletescape.lawnchair.blur.BlurWallpaperProvider;
 import ch.deletescape.lawnchair.compat.AppWidgetManagerCompat;
 import ch.deletescape.lawnchair.compat.LauncherActivityInfoCompat;
 import ch.deletescape.lawnchair.compat.LauncherAppsCompat;
@@ -626,21 +625,21 @@ public class LauncherModel extends BroadcastReceiver
     static void checkItemInfoLocked(
             final long itemId, final ItemInfo item, StackTraceElement[] stackTrace) {
         ItemInfo modelItem = sBgItemsIdMap.get(itemId);
-        if (modelItem != null && item != modelItem) {
+        if (modelItem != null && item != modelItem && !(item instanceof FolderInfo)) {
             // check all the data is consistent
             if (modelItem instanceof ShortcutInfo && item instanceof ShortcutInfo) {
                 ShortcutInfo modelShortcut = (ShortcutInfo) modelItem;
                 ShortcutInfo shortcut = (ShortcutInfo) item;
-                if (modelShortcut.title.toString().equals(shortcut.title.toString()) &&
+                if (/*modelShortcut.title.toString().equals(shortcut.title.toString()) &&*/
                         modelShortcut.intent.filterEquals(shortcut.intent) &&
-                        modelShortcut.id == shortcut.id &&
-                        modelShortcut.itemType == shortcut.itemType &&
-                        modelShortcut.container == shortcut.container &&
-                        modelShortcut.screenId == shortcut.screenId &&
-                        modelShortcut.cellX == shortcut.cellX &&
-                        modelShortcut.cellY == shortcut.cellY &&
-                        modelShortcut.spanX == shortcut.spanX &&
-                        modelShortcut.spanY == shortcut.spanY) {
+                                modelShortcut.id == shortcut.id &&
+                                modelShortcut.itemType == shortcut.itemType &&
+                                modelShortcut.container == shortcut.container &&
+                                modelShortcut.screenId == shortcut.screenId &&
+                                modelShortcut.cellX == shortcut.cellX &&
+                                modelShortcut.cellY == shortcut.cellY &&
+                                modelShortcut.spanX == shortcut.spanX &&
+                                modelShortcut.spanY == shortcut.spanY) {
                     // For all intents and purposes, this is the same object
                     return;
                 }
@@ -714,8 +713,8 @@ public class LauncherModel extends BroadcastReceiver
                 }
                 try {
                     cr.applyBatch(LauncherProvider.AUTHORITY, ops);
-                } catch (Exception e) {
-                    FirebaseCrash.report(e);
+                } catch (Exception ignored) {
+
                 }
             }
         };
@@ -1332,6 +1331,7 @@ public class LauncherModel extends BroadcastReceiver
             } else {
                 ExtractionUtils.startColorExtractionService(context);
             }
+            BlurWallpaperProvider.getInstance().updateAsync();
         }
     }
 
@@ -2280,7 +2280,6 @@ public class LauncherModel extends BroadcastReceiver
                                     break;
                             }
                         } catch (Exception e) {
-                            FirebaseCrash.report(e);
                             Log.e(TAG, "Desktop items loading interrupted", e);
                         }
                     }

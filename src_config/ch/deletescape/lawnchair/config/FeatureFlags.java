@@ -17,9 +17,8 @@
 package ch.deletescape.lawnchair.config;
 
 import android.content.Context;
-
-import com.google.firebase.analytics.FirebaseAnalytics;
-
+import ch.deletescape.lawnchair.Launcher;
+import ch.deletescape.lawnchair.R;
 import ch.deletescape.lawnchair.Utilities;
 
 /**
@@ -38,6 +37,14 @@ public final class FeatureFlags {
     private static final String KEY_HOME_OPENS_DRAWER = "pref_homeOpensDrawer";
     public static final String KEY_SHOW_VOICE_SEARCH_BUTTON = "pref_showMic";
     private static final String KEY_PREF_PIXEL_STYLE_ICONS = "pref_pixelStyleIcons";
+    private static final String KEY_PREF_HIDE_APP_LABELS = "pref_hideAppLabels";
+    private static final String KEY_PREF_FULL_WIDTH_WIDGETS = "pref_fullWidthWidgets";
+    private static final String KEY_PREF_SHOW_NOW_TAB = "pref_showGoogleNowTab";
+    private static final String KEY_PREF_TRANSPARENT_HOTSEAT = "pref_isHotseatTransparent";
+    private static final String KEY_PREF_ENABLE_DYNAMIC_UI = "pref_enableDynamicUi";
+    private static final String KEY_PREF_ENABLE_BLUR = "pref_enableBlur";
+    public static final String KEY_PREF_WHITE_GOOGLE_ICON = "pref_enableWhiteGoogleIcon";
+    private static final String KEY_PREF_DARK_THEME = "pref_enableDarkTheme";
 
     private FeatureFlags() {
     }
@@ -45,68 +52,104 @@ public final class FeatureFlags {
     // When enabled fling down gesture on the first workspace triggers search.
     public static boolean pulldownOpensNotifications(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_PULLDOWN_NOTIS, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("pulldown_notifis_enabled", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean pinchToOverview(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_PINCH_TO_OVERVIEW, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("pinch_overview_enabled", String.valueOf(enabled));
         return enabled;
     }
 
     // When enabled the status bar may show dark icons based on the top of the wallpaper.
     public static boolean lightStatusBar(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_LIGHT_STATUS_BAR, false);
-        FirebaseAnalytics.getInstance(context).setUserProperty("light_statusbar_enabled", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean hotseatShouldUseExtractedColors(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_HOTSEAT_EXTRACTED_COLORS, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("hotseat_extract_enabled", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean enableHapticFeedback(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_HAPTIC_FEEDBACK, false);
-        FirebaseAnalytics.getInstance(context).setUserProperty("haptic_feedback_enabled", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean keepScrollState(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_KEEP_SCROLL_STATE, false);
-        FirebaseAnalytics.getInstance(context).setUserProperty("keep_scrollstate", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean useFullWidthSearchbar(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_FULL_WIDTH_SEARCHBAR, false);
-        FirebaseAnalytics.getInstance(context).setUserProperty("full_width_searchbar", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean showVoiceSearchButton(Context context) {
-        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_SHOW_VOICE_SEARCH_BUTTON, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("show_voice_search", String.valueOf(enabled));
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_SHOW_VOICE_SEARCH_BUTTON, false);
         return enabled;
     }
 
     public static boolean showPixelBar(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_SHOW_PIXEL_BAR, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("show_pixel_bar", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean homeOpensDrawer(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_HOME_OPENS_DRAWER, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("home_opens_drawer", String.valueOf(enabled));
         return enabled;
     }
 
     public static boolean usePixelIcons(Context context) {
         boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_PIXEL_STYLE_ICONS, true);
-        FirebaseAnalytics.getInstance(context).setUserProperty("pixel_style_icons", String.valueOf(enabled));
         return enabled;
+    }
+
+    public static boolean hideAppLabels(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_HIDE_APP_LABELS, false);
+        return enabled;
+    }
+
+    public static boolean allowFullWidthWidgets(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_FULL_WIDTH_WIDGETS, false);
+        return enabled;
+    }
+
+    public static boolean showGoogleNowTab(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_SHOW_NOW_TAB, true);
+        return enabled;
+    }
+
+    public static boolean isTransparentHotseat(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_TRANSPARENT_HOTSEAT, false);
+        return enabled;
+    }
+
+    public static boolean isDynamicUiEnabled(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_ENABLE_DYNAMIC_UI, false);
+        return enabled;
+    }
+
+    public static boolean isBlurEnabled(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_ENABLE_BLUR, false);
+        return enabled;
+    }
+
+    public static boolean useWhiteGoogleIcon(Context context) {
+        boolean enabled = Utilities.getPrefs(context).getBoolean(KEY_PREF_WHITE_GOOGLE_ICON, false);
+        return enabled;
+    }
+
+    public static boolean useDarkTheme = true;
+
+    public static void applyDarkThemePreference(Launcher launcher) {
+        useDarkTheme = Utilities.getPrefs(launcher).getBoolean(KEY_PREF_DARK_THEME, false);
+        if (useDarkTheme)
+            launcher.setTheme(R.style.LauncherTheme_Dark);
+    }
+
+    public static boolean isVibrancyEnabled(Context context) {
+        return true;
     }
 }
